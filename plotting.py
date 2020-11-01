@@ -90,33 +90,3 @@ def plot_ROC( y, y_scores ):
     plt.xlabel( '1-Specifity (FPR)' )
     plt.text( 0.6, 0.1, 'AUC = {:.3f}'.format( auc ) )
     plt.show()
-
-
-class AlwaysFailClassifier( BaseEstimator, ClassifierMixin ):
-    """Dumb binary classifier that always returns False."""
-    # ClassifierMixin provides score method (uses mean accuracy)
-
-    def fit( self, X, y=None ):
-        return self
-
-    def predict( self, X ):
-        return np.zeros( (len( X ), 1), dtype=bool )
-
-
-
-
-
-class BaseTransformer( BaseEstimator, TransformerMixin, HyperparameterMixin ):
-    """Base transformer class.
-
-    This is a base class that doesn't do any transformation, but implements the
-    generic methods. To create a new transformer subclass this class and
-    implement the transform method.
-    """
-
-    def fit( self, X, y=None ):
-        return self  # fit method always returns the object it was called on, serving as a model of it's input
-
-    def transform( self, X ):
-        """Dumb transform method that returns the data as is."""
-        return X
