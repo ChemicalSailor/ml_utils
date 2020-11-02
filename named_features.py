@@ -17,7 +17,7 @@ def names_from_dataframe( X: pd.DataFrame ) -> List[str]:
 
     Returns
     -------
-    list
+    List[str]
         The column names.
 
     """
@@ -38,7 +38,7 @@ def generate_names( X: np.ndarray ) -> List[str]:
 
     Returns
     -------
-    list
+    List[str]
         Generated feature names.
 
     """
@@ -88,23 +88,30 @@ def with_feature_names( estimator=None, *, names=None ):
     --------
     As a decorator:
 
-    >>> @with_feature_names
-    >>> class MyEstimator( BaseEstimator ):
-    >>>     pass
+    ```
+    @with_feature_names
+    class MyEstimator( BaseEstimator ):
+        pass
+    ```
 
     With custom names:
 
-    >>> feature_names = ['a', 'b', 'c']
-    >>> @with_feature_names( names=feature_names ) # names must be passed as keyword
-    >>> class MyEstimator( BaseEstimator ):
-    >>>     pass
+    ```
+    feature_names = ['a', 'b', 'c']
+    # names must be passed as keyword argument
+    @with_feature_names( names=feature_names )
+    class MyEstimator( BaseEstimator ):
+        pass
+    ```
 
     May also be used as a function which is useful to decorate imported
     estimators:
 
+    ```
     >>> with_feature_names( BaseEstimator )
     >>> with_feature_names( BaseEstimator, names=feature_names )
     >>> with_feature_names( names=feature_names )( BaseEstimator )
+    ```
 
     """
 

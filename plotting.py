@@ -1,15 +1,10 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Sun May 20 18:13:38 2018
-
-@author: tom
-"""
+"""Matplotlib plots for model analysis."""
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, precision_recall_curve, roc_curve, roc_auc_score, accuracy_score
-from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin
+from sklearn.metrics import confusion_matrix, precision_recall_curve, roc_curve, roc_auc_score
 
 
 def binary_confusion_matrix( y_true, y_predicted ):
@@ -84,7 +79,7 @@ def plot_ROC( y, y_scores ):
     fpr, tpr, scores = roc_curve( y, y_scores )
     auc = roc_auc_score( y, y_scores )
     plt.plot( fpr, tpr )
-    plt.plot( [0,1], [0,1], 'k--' )
+    plt.plot( [0, 1], [0, 1], 'k--' )
     plt.axis( [0, 1, 0, 1 ] )
     plt.ylabel( 'Recall (TPR)' )
     plt.xlabel( '1-Specifity (FPR)' )
