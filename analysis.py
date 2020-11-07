@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Matplotlib plots for model analysis."""
+"""Utility functions to help with model evaluation."""
 
 import numpy as np
 import pandas as pd
@@ -7,10 +7,18 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, precision_recall_curve, roc_curve, roc_auc_score
 
 
-def binary_confusion_matrix( y_true, y_predicted ):
+def binary_confusion_matrix( y_true: np.ndarray, y_predicted: np.ndarray ) -> pd.DataFrame:
     """
-    Computes the confusion matrix for a binary classification system.
+    Compute the confusion matrix for a binary classification system.
     Returns as a pandas dataframe for pretty printing with labels.
+
+    Parameters
+    ----------
+    y_true : array-like of shape (n_samples,)
+        Ground truth (correct) target values.
+    y_predicted : array-like of shape (n_samples,)
+        Estimated targets as returned by a classifer.
+
     """
     m = confusion_matrix( y_true, y_predicted )
     labels = ('Negative', 'Positive')
@@ -20,8 +28,26 @@ def binary_confusion_matrix( y_true, y_predicted ):
     return df
 
 
-def plot_confusion_matrix( y_true, y_predicted ):
+def plot_confusion_matrix( y_true: np.ndarray, y_predicted: np.ndarray ) -> np.ndarray:
+    """
+    Show the confusion matix as a coloured plot.
 
+    Creates plots for the raw data, the data normalised to number of class
+    instances, and the normalised data without the diagonal (shows errors only).
+
+    Parameters
+    ----------
+    y_true : array-like of shape (n_samples,)
+        Ground truth (correct) target values.
+    y_predicted : array-like of shape (n_samples,)
+        Estimated targets as returned by a classifer.
+
+    Returns
+    -------
+    np.ndarray
+        The confusion matrix.
+
+    """
     m = confusion_matrix( y_true, y_predicted )
     norm = m / m.sum( axis=1, keepdims=True )
     errors = norm.copy()
@@ -40,9 +66,16 @@ def plot_confusion_matrix( y_true, y_predicted ):
     return m
 
 
-def plot_precision_recall_score( y, y_scores ):
+def plot_precision_recall_score( y: np.ndarray, y_scores: np.ndarray ):
     """
-    Plots precison and recall against the varying score/threshold.
+    Plot precison and recall against the varying score/threshold.
+
+    Parameters
+    ----------
+    y : array-like of shape (n_samples,)
+        Ground truth (correct) numeric target values.
+    y_scores : array-like of shape (n_samples,)
+        Target scores as returned by a classifer's decision function.
     """
     precision, recall, score = precision_recall_curve( y, y_scores )
     # precision and recall have 0 and 1 added to the end, so they get trimmed off
@@ -54,12 +87,20 @@ def plot_precision_recall_score( y, y_scores ):
     plt.show()
 
 
-def plot_precision_recall( y, y_scores ):
+def plot_precision_recall( y: np.ndarray, y_scores: np.ndarray ):
     """
-    Plots precision against recall.
+    Plot precision against recall.
 
     Most useful when positive class is rare or number of false positives is
     more important than false negatives.
+
+    Parameters
+    ----------
+    y : array-like of shape (n_samples,)
+        Ground truth (correct) numeric target values.
+    y_scores : array-like of shape (n_samples,)
+        Target scores as returned by a classifer's decision function.
+
     """
     precision, recall, score = precision_recall_curve( y, y_scores )
     plt.plot( recall[:-1], precision[:-1] )
@@ -69,12 +110,20 @@ def plot_precision_recall( y, y_scores ):
     plt.show()
 
 
-def plot_ROC( y, y_scores ):
+def plot_ROC( y: np.ndarray, y_scores: np.ndarray ):
     """
-    Plots the Receiver Operating Characteristic (ROC) curve.
+    Plot the Receiver Operating Characteristic (ROC) curve.
 
     Most useful when number of positives ~= number of negatives.
     A dumb classifier is represented by the diagonal line.
+
+    Parameters
+    ----------
+    y : array-like of shape (n_samples,)
+        Ground truth (correct) numeric target values.
+    y_scores : array-like of shape (n_samples,)
+        Target scores as returned by a classifer's decision function.
+
     """
     fpr, tpr, scores = roc_curve( y, y_scores )
     auc = roc_auc_score( y, y_scores )
