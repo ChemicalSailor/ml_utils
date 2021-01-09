@@ -5,7 +5,36 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, precision_recall_curve, roc_curve, roc_auc_score
+from sklearn.model_selection import check_cv
+from sklearn.base import is_classifier
+from sklearn.metrics._scorer import _check_multimetric_scoring
+from sklearn.metrics import check_scoring
 
+
+def _check_scorers( estimator, scoring ):
+    if callable( scoring ):
+        scorers = scoring
+    elif scoring is None or isinstance( scoring, str ):
+        scorers = check_scoring( estimator, scoring )
+    else:
+        scorers = _check_multimetric_scoring( estimator, scoring)
+    return scorers
+
+def nested_cv( cv_estimator, X, y=None, *, cv=5, groups=None, scoring=None ):
+    outer_cv = check_cv( cv, y, classifier=is_classifier( cv_estimator ) )
+    scorers = _check_scorers( cv_estimator, scoring )
+
+    # Modified from https://stackoverflow.com/questions/60996995/use-groupkfold-in-nested-cross-validation-using-sklearn
+    for train_index, test_index in outer_cv.split(X, y, groups=groups):
+        X_train_val, X_test = X[train_index, :], X[test_index, :]
+        y_train_val, y_test = y[train_index], y[test_index]
+        groups_train_val = groups[train_index]
+
+        cv_estimator.fit( X_train_val, y_train_val, groups=groups_train_val )
+
+        pred = cv_estimator.predict( X_test )
+        pred_y.extend(pred)
+        true_y.extend(y_tt)
 
 def binary_confusion_matrix( y_true: np.ndarray, y_predicted: np.ndarray ) -> pd.DataFrame:
     """
