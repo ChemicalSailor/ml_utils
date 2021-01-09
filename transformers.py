@@ -27,7 +27,7 @@ class HyperparameterMixin:
 
     def _set_args( self, args: dict ):
         """
-        Set attributes (hyperparmeters) from a dictionary.
+        Set attributes (hyperparameters) from a dictionary.
 
         Parameters
         ----------
