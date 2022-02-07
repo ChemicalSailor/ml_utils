@@ -4,8 +4,7 @@ Modified one-hot encoder for blends.
 @author: T Fletcher
 """
 
-# TODO: Test feature name generation with feature_names_in_
-# TODO: accept feature names as argument to get_feature_names_out
+# TODO: Test missing sample
 # TODO: implement inverse_transform
 # TODO: extent class documentation with description and examples
 
@@ -13,6 +12,7 @@ import numpy as np
 import pandas as pd
 from sklearn.base import TransformerMixin, BaseEstimator
 from sklearn.preprocessing import OneHotEncoder
+from sklearn.utils.validation import check_is_fitted, check_array, _check_feature_names_in
 import re
 from typing import List, Tuple, Iterable
 from numpy.typing import ArrayLike, NDArray
@@ -168,10 +168,20 @@ class BlendEncoder( BaseEstimator, TransformerMixin ):
         self.sparse = sparse
         self.validate = validate
 
-    def _fit_transform( self, X: ArrayLike, transform: bool ):
-        self._check_n_features( X, reset=True )
-        self._check_feature_names( X, reset=True )
+    def _check_X( self, X: ArrayLike, *, reset=False ):
+        # do feature checks first
+        self._check_n_features( X, reset=reset )
+        self._check_feature_names( X, reset=reset )
 
+        X = check_array(
+            X,
+            dtype=None,
+            estimator="BlendEncoder"
+            )
+        return np.array( X )
+
+    def _fit_transform( self, X: ArrayLike, transform: bool ):
+        X = self._check_X( X, reset=True )
         encoders = []
         components = []
         transformed = []
@@ -250,8 +260,8 @@ class BlendEncoder( BaseEstimator, TransformerMixin ):
             returned.
 
         """
-        self._check_n_features( X, reset=False )
-        self._check_feature_names( X, reset=False )
+        check_is_fitted( self )
+        X = self._check_X( X, reset=False )
 
         transformed = []
         for i, enc in enumerate( self.encoders_ ):
@@ -259,9 +269,19 @@ class BlendEncoder( BaseEstimator, TransformerMixin ):
             transformed.append( self._transform_1d( components, quantities, enc ) )
         return np.concatenate( transformed, axis=1 )
 
-    def get_feature_names_out( self ) -> List[ str ]:
+    def get_feature_names_out( self, input_features=None ) -> List[ str ]:
         """
         Get output feature names for transformation.
+
+        Parameters
+        ----------
+        input_features : array-like of str or None, default=None
+            Input features.
+            - If `input_features` is `None`, then `feature_names_in_` is
+              used as feature names in. If `feature_names_in_` is not defined,
+              then names are generated: `[x0, x1, ..., x(n_features_in_)]`.
+            - If `input_features` is an array-like, then `input_features` must
+              match `feature_names_in_` if `feature_names_in_` is defined.
 
         Returns
         -------
@@ -269,10 +289,13 @@ class BlendEncoder( BaseEstimator, TransformerMixin ):
             Transformed feature names.
 
         """
-        feature_names_in = ( f'x{i}' for i in range( self.n_features_in_ ) )
+        check_is_fitted( self )
+        input_features = _check_feature_names_in( self, input_features )
+
+        # feature_names_in = ( f'x{i}' for i in range( self.n_features_in_ ) )
         feature_components = ( enc.categories_[0] for enc in self.encoders_ )
         out = []
-        for f_name, components in zip( feature_names_in, feature_components ):
+        for f_name, components in zip( input_features, feature_components ):
             for c_name in components:
                 out.append( f'{f_name}_{c_name}' )
         return out
@@ -344,6 +367,8 @@ if __name__ == '__main__':
         'ethyl acetate',
         'tmb:indane:bubz 50:47.5:2.5',
         ]).reshape(-1, 1)
+    s = pd.DataFrame( s, columns=['solvent'] )
+    s
 
     # c_, q_, = _BlendParser().map( s[:, 0] )
     # enc = BlendEncoder()._fit_1d( c_ )
@@ -362,8 +387,6 @@ if __name__ == '__main__':
     # _BlendParser()( s[-3, 0] )
 
     enc = BlendEncoder()
-    c, q = enc._parse_1d( s[:, 0] )
-    c
     a = enc.fit_transform( s )
     enc.get_feature_names_out()
     pd.DataFrame( a, columns=enc.get_feature_names_out() )
