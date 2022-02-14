@@ -5,8 +5,11 @@ Modified one-hot encoder for blends.
 """
 
 # TODO: Test missing sample
-# TODO: implement inverse_transform
+#   check_array checks for missing values (np.nan or pd.NA) provided input is 'object' dtype
+#   need to decide if input should be cast, in which case there should be string replacement for empty values
 # TODO: extent class documentation with description and examples
+# TODO: handle unknown solvents passed to transform
+#   currently implicitedly converted to 'none' and dropped meaning validation fails
 
 import numpy as np
 import pandas as pd
@@ -189,7 +192,7 @@ class BlendEncoder( BaseEstimator, TransformerMixin ):
             _components, _quantities = self._parse_1d( X[:, i] )
             _one_hot = self._fit_1d( _components )
             encoders.append( _one_hot )
-            components.append( _one_hot.categories_ )
+            components.append( _one_hot.categories_[0] )
 
             if transform:
                 transformed.append( self._transform_1d( _components, _quantities, _one_hot ) )
@@ -300,6 +303,55 @@ class BlendEncoder( BaseEstimator, TransformerMixin ):
                 out.append( f'{f_name}_{c_name}' )
         return out
 
+    def inverse_transform( self, Xt: ArrayLike ) -> NDArray:
+        """
+        Convert the data back to the original representation.
+
+        When unknown components are encountered (all zeros in the
+        one-hot encoding), ``None`` is used to represent this component.
+
+        Parameters
+        ----------
+        Xt : {array-like, sparse matrix} of shape \
+                (n_samples, n_encoded_features)
+            The transformed data.
+
+        Returns
+        -------
+        X : ndarray of shape (n_samples, n_features)
+            Inverse transformed array.
+
+        Raises
+        ------
+        ValueError
+            When the shape of Xt is not correct
+
+        """
+        check_is_fitted(self)
+        Xt = check_array(Xt, accept_sparse="csr")
+
+        Xt = np.array( Xt )
+        n_samples, n_features = Xt.shape
+        n_transformed_features = sum( len( cats ) for cats in self.components_ )
+
+        if n_features != n_transformed_features:
+            raise ValueError(
+                "Shape of the passed X data is not correct. Expected {0} columns, got {1}.".format(
+                    n_transformed_features,
+                    n_features
+                )
+            )
+
+        start_idx = 0
+        X = []
+        for enc in self.encoders_:
+            stop_idx = start_idx + len( enc.categories_[0] )
+            _Xt = Xt[:, start_idx:stop_idx]
+            X.append( self._inverse_transform_1d( _Xt, enc.categories_[0] ) )
+            start_idx = stop_idx
+        X = np.concatenate( X, axis=1 )
+        return X
+
     def _parse_1d( self, x ):
         parser = _BlendParser( self.delimit, self.case_sensitive )
         return parser.map( x )
@@ -318,7 +370,7 @@ class BlendEncoder( BaseEstimator, TransformerMixin ):
         return one_hot
 
     def _transform_1d( self, components, quantities, encoder ):
-        n_categories = len( encoder.categories[0] )
+        n_categories = len( encoder.categories_[0] )
         encoded_2d = encoder.transform( components )
 
         _zip = zip(
@@ -345,12 +397,14 @@ class BlendEncoder( BaseEstimator, TransformerMixin ):
             raise ValueError( f"Shape {X.shape} of `X` did not match the given number of categories {n_cat}" )
 
         gen = ( [ (name, val * 100) for name, val in zip( categories, x ) if val ] for x in X )
-        return list( self._join( gen ) )
+        return np.array( list( self._join( gen ) ) ).reshape( -1, 1 )
 
     @staticmethod
     def _join( iter ):
         for i in iter:
-            if len( i ) == 1:
+            if len( i ) == 0:
+                yield None
+            elif len( i ) == 1:
                 yield i[0][0]
             else:
                 components, quantities = zip( *sorted( i, key=lambda T: T[1], reverse=True ) )
@@ -359,35 +413,3 @@ class BlendEncoder( BaseEstimator, TransformerMixin ):
                 yield components + ' ' + quantities
 
 
-if __name__ == '__main__':
-    s = np.array([
-        'indane:dmob 80:20',
-        'tmb:cyclohexyl benzene (90:10)',
-        'o-xylene:2,3-butandiol 2:1',
-        'ethyl acetate',
-        'tmb:indane:bubz 50:47.5:2.5',
-        ]).reshape(-1, 1)
-    s = pd.DataFrame( s, columns=['solvent'] )
-    s
-
-    # c_, q_, = _BlendParser().map( s[:, 0] )
-    # enc = BlendEncoder()._fit_1d( c_ )
-    # encoded_2d = enc.transform( c_ )
-    # n_categories = len( enc.categories_[0] )
-    # n_categories
-    # _zip = zip(
-    #     range( 0, encoded_2d.shape[1], n_categories ),
-    #     q_.T
-    #     )
-    #
-    # encoded_stack = [ (q.reshape(-1, 1) * encoded_2d[:, i:i+n_categories]).shape for i, q in _zip ]
-    # encoded_stack
-    # enc.categories
-
-    # _BlendParser()( s[-3, 0] )
-
-    enc = BlendEncoder()
-    a = enc.fit_transform( s )
-    enc.get_feature_names_out()
-    pd.DataFrame( a, columns=enc.get_feature_names_out() )
-    enc._inverse_transform_1d( a, enc.get_feature_names_out() )
